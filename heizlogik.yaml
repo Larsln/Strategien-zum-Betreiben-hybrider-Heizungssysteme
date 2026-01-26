@@ -1,0 +1,186 @@
+alias: Heizlogik
+description: ""
+triggers:
+  - id: T_min
+    value_template: |
+      {{
+        (states('sensor.thermometer_pufferspeicher_h4') | float)
+        <
+        (
+          (states('sensor.heizkurve_vorlauf_solltemperatur') | float)
+          - (states('input_number.hysterese_min') | float)
+        )
+      }}
+    trigger: template
+  - id: T_max
+    value_template: |
+      {{
+        (states('sensor.thermometer_pufferspeicher_h4') | float)
+        >=
+        (
+          (states('sensor.heizkurve_vorlauf_solltemperatur') | float)
+          + (states('input_number.hysterese_max') | float)
+        )
+      }}
+    trigger: template
+  - trigger: time_pattern
+    minutes: /5
+    id: time
+conditions:
+  - condition: state
+    entity_id: input_boolean.heizung_hauptschalter
+    state: "on"
+actions:
+  - variables:
+      wp_on: "{{ is_state('switch.wp_relais', 'on') }}"
+      gas_on: "{{ is_state('switch.gas_relais', 'on') }}"
+      wp_laufzeit: >
+        {{ (as_timestamp(now()) -
+        as_timestamp(states.switch.wp_relais.last_changed)) | float }}
+      gas_laufzeit: >
+        {{ (as_timestamp(now()) -
+        as_timestamp(states.switch.gas_relais.last_changed)) | float }}
+      wp_minlaufzeit: "{{ states('input_number.mindestlaufzeit_waermepumpe') | float * 60 }}"
+      gas_minlaufzeit: "{{ states('input_number.mindestlaufzeit_gastherme') | float * 60 }}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ wp_on and gas_on }}"
+        sequence:
+          - metadata: {}
+            data:
+              title: Fehler
+              message: Wärmepumpe und Gastherme sind gleichzeitig aktiv
+            action: persistent_notification.create
+          - data:
+              name: Heizlogik
+              message: "Zustand: FEHLER! Beide Heizquellen gleichzeitig eingeschaltet"
+              entity_id: automation.testen
+            action: logbook.log
+          - action: automation.turn_off
+            metadata: {}
+            data:
+              stop_actions: true
+            target:
+              entity_id: automation.testen
+        alias: WP & Gas an
+      - conditions:
+          - condition: template
+            value_template: "{{ not wp_on and not gas_on }}"
+        sequence:
+          - variables:
+              heizquelle: "off"
+          - data:
+              name: Heizlogik
+              message: "Zustand: Beide aus - heizquelle=off"
+              entity_id: automation.testen
+            action: logbook.log
+        alias: WP & Gas aus
+      - conditions:
+          - condition: template
+            value_template: |
+              {{ wp_on and wp_laufzeit > wp_minlaufzeit }}
+        sequence:
+          - variables:
+              heizquelle: wp
+          - data:
+              name: Heizlogik
+              message: "Zustand: WP aktiv - Mindestlaufzeit erfüllt"
+              entity_id: automation.testen
+            action: logbook.log
+        alias: WP länger als laufzeit_min an
+      - conditions:
+          - condition: template
+            value_template: |
+              {{ gas_on and gas_laufzeit > gas_minlaufzeit }}
+        sequence:
+          - variables:
+              heizquelle: gas
+          - data:
+              name: Heizlogik
+              message: "Zustand: Gas aktiv - Mindestlaufzeit erfüllt"
+              entity_id: automation.testen
+            action: logbook.log
+        alias: Gas länger als laufzeit_min an
+    default:
+      - data:
+          name: Heizlogik
+          message: |
+            Zustand:
+            {% if wp_on and gas_on %}
+              FEHLER: WP und Gas gleichzeitig aktiv!
+              
+            {% elif wp_on %}
+              Wärmepumpe aktiv
+              Laufzeit: {{ (wp_laufzeit / 60) | round(0) }} min von
+              Mindestlaufzeit: {{ (wp_minlaufzeit / 60) | round(0) }} min
+
+            {% elif gas_on %}
+              Gastherme aktiv
+              Laufzeit: {{ (gas_laufzeit / 60) | round(0) }} min von
+              Mindestlaufzeit: {{ (gas_minlaufzeit / 60) | round(0) }} min
+
+            {% else %}
+              Beide Heizquellen AUS
+            {% endif %}
+        action: logbook.log
+      - stop: ""
+    alias: Wärmeerzeuger läuft noch? Mindestlaufzeit abgelaufen?
+  - if:
+      - condition: trigger
+        id:
+          - T_max
+    then:
+      - target:
+          entity_id:
+            - switch.wp_relais
+            - switch.gas_relais
+        action: switch.turn_off
+        data: {}
+      - stop: ""
+    alias: Soll geheizt werden?
+  - if:
+      - condition: template
+        value_template: >
+          {% set cop = states('sensor.influx_wp_cop_prognose') | float(0) %} {%
+          set strompreis = states('input_number.strompreis') | float(0) %} {%
+          set gaspreis = states('input_number.gaspreis') | float(0) %} {% set
+          wirkungsgrad = states('input_number.wirkungsgrad_gastherme') |
+          float(0) %}
+
+          {{ cop > 0 and strompreis > 0 and gaspreis > 0 and wirkungsgrad > 0
+             and (strompreis / cop) < (gaspreis / (wirkungsgrad/100)) }}
+    then:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.wp_relais
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.gas_relais
+      - data:
+          name: Heizlogik
+          message: "Zustand: Wärmepumpe eingeschaltet"
+          entity_id: automation.testen
+        action: logbook.log
+    else:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+            - switch.gas_relais
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.wp_relais
+      - data:
+          name: Heizlogik
+          message: "Zustand: Gastherme eingeschaltet"
+          entity_id: automation.testen
+        action: logbook.log
+mode: single
