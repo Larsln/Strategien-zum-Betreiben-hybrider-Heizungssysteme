@@ -1,0 +1,142 @@
+type: sections
+max_columns: 4
+title: Benutzereinstellungen
+path: benutzereinstellungen
+icon: ""
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Wärmemengenzähler Wärmepumpe
+        heading_style: title
+      - type: entities
+        entities:
+          - entity: sensor.cop_aktuell_2_kommastellen
+            name: COP aktuell
+            secondary_info: none
+          - entity: sensor.shelly_wp_power
+            name: Wärmepumpe Power Consumption
+          - entity: sensor.wmz_wp_power
+          - entity: sensor.wmz_wp_flow
+      - type: entities
+        entities:
+          - entity: sensor.wp_delta_t
+          - entity: sensor.wmz_wp_vorlauf
+            name: WMZ Wärmepumpe Vorlauf innen
+          - entity: sensor.warmepumpe_vl_aussenwand
+            name: Wärmepumpe Vorlauf Außenwand
+          - entity: sensor.wmz_wp_rucklauf
+            name: WMZ Wärmepumpe Rücklauf innen
+          - entity: sensor.warmepumpe_rl_aussenwand
+            name: Wärmepumpe Rücklauf Außenwand
+          - entity: sensor.warmepumpe_vl_monoblock
+            name: Temperatur Monoblock
+      - type: entities
+        entities:
+          - entity: sensor.wmz_wp_volume
+          - entity: sensor.wmz_wp_energy
+  - type: grid
+    cards:
+      - type: heading
+        heading: Wärmemengenzähler Solarthermie
+        heading_style: title
+      - type: entities
+        entities:
+          - entity: sensor.multical_603_power_3
+          - entity: sensor.multical_603_flow_3
+          - entity: sensor.multical_603_delta_t_3
+          - entity: sensor.multical_603_vorlauf_3
+          - entity: sensor.multical_603_rucklauf_3
+      - type: entities
+        entities:
+          - entity: sensor.multical_603_volume_3
+          - entity: sensor.multical_603_energy_3
+  - type: grid
+    cards:
+      - type: heading
+        heading: Wärmemengenzähler Verbrauch des Hauses
+        heading_style: title
+      - type: entities
+        entities:
+          - entity: sensor.multical_603_power_2
+          - entity: sensor.multical_603_flow_2
+          - entity: sensor.multical_603_delta_t_2
+          - entity: sensor.multical_603_vorlauf_2
+          - entity: sensor.multical_603_rucklauf_2
+      - type: entities
+        entities:
+          - entity: sensor.multical_603_volume_2
+          - entity: sensor.multical_603_energy_2
+  - type: grid
+    cards:
+      - type: heading
+        heading: Temperaturen Pufferspeicher
+        heading_style: title
+      - type: entities
+        entities:
+          - entity: sensor.thermometer_pufferspeicher_h5
+          - entity: sensor.thermometer_pufferspeicher_h4
+          - entity: sensor.thermometer_pufferspeicher_h1
+  - type: grid
+    cards:
+      - type: heading
+        heading: Einstellungen Automatiksteuerung
+        heading_style: title
+      - type: custom:auto-entities
+        card:
+          type: entities
+        filter:
+          include:
+            - options: {}
+              label: benutzereingabe
+          exclude: []
+  - type: grid
+    cards:
+      - type: heading
+        heading: Alternativsteuerung
+        heading_style: title
+      - type: entities
+        entities:
+          - entity: switch.gas_relais
+          - entity: switch.wp_relais
+          - entity: input_boolean.warmepumpe_zeitplan
+          - entity: schedule.warmepumpe_zeitplan
+  - type: grid
+    cards:
+      - type: heading
+        heading: Visualisierung
+        heading_style: title
+      - show_name: true
+        show_icon: true
+        type: button
+        name: Grafana
+        tap_action:
+          action: url
+          url_path: >-
+            http://192.168.0.10:3000/d/addz4l8/stromverbrauch-wp-energieabgabe?orgId=1&from=now-24h&to=now&timezone=browser
+        grid_options:
+          columns: 3
+          rows: 2
+cards: []
+header:
+  card:
+    type: markdown
+    content: >
+      ## <font color="{% if is_state('input_boolean.heizung_hauptschalter',
+      'on') %}#4caf50{% elif is_state('input_boolean.warmepumpe_zeitplan', 'on')
+      %}#2196f3{% else %}#ff9800{% endif %}">●</font> Heizungssteuerung
+
+      {% if is_state('input_boolean.heizung_hauptschalter', 'on') %}
+        **Automatikbetrieb**
+      {% elif is_state('input_boolean.warmepumpe_zeitplan', 'on') %}
+        **Zeitplanbetrieb**
+      {% else %}
+        **Manueller Betrieb**
+      {% endif %}
+
+
+      ---
+
+      <ha-icon icon="mdi:thermometer"></ha-icon> Außentemperatur: **{{
+      states('sensor.thermometer_aussen') }} °C**
+    text_only: true

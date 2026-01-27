@@ -1,0 +1,60 @@
+type: sections
+max_columns: 4
+title: Parameter für Fachkräfte
+path: anpassungen-der-werte
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading_style: title
+      - type: custom:auto-entities
+        card:
+          type: entities
+        filter:
+          include:
+            - options: {}
+              label: parameter
+          exclude: []
+        grid_options:
+          columns: 14
+          rows: auto
+  - type: grid
+    cards:
+      - type: heading
+        heading_style: title
+      - type: custom:plotly-graph
+        refresh_interval: 1
+        title: Heizkurve
+        defaults:
+          entity:
+            show_value: false
+            line:
+              shape: line
+              width: 2
+            mode: lines+markers+text
+            texttemplate: "%{y}"
+            textposition: top left
+        layout:
+          xaxis:
+            type: linear
+            range:
+              - -20
+              - 40
+        entities:
+          - entity: null
+            name: |
+              "Heizkurve Solltemperatur"
+            x:
+              - -14
+              - 30
+            "y":
+              - >
+                $ex
+                hass.states['sensor.heizkurve_vorlauf_solltemperatur_min'].state
+              - >
+                $ex
+                hass.states['sensor.heizkurve_vorlauf_solltemperatur_max'].state
+cards: []
+visible:
+  - user: c42ef92e3d244817b29ae2c86c124fde
+  - user: b466b006b06a4ecb9a87a17bafce5c07

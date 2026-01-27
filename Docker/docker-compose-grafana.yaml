@@ -1,0 +1,38 @@
+services:
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    networks:
+      - grafana
+    environment:
+      - BROWSER_TZ=Europe/Berlin  # Setzt die Zeitzone für den Chromium-Browser
+      - TZ=Europe/Berlin
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SERVER_ROOT_URL=http://192.168.0.10:3000/
+      - GF_PLUGINS_PREINSTALL=grafana-clock-panel
+      - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - TZ=Europe/Berlin
+      - GF_DATE_FORMATS_DEFAULT_TIMEZONE=Europe/Berlin
+      - GF_RENDERING_DEFAULT_DEVICE_SCALE_FACTOR=2
+      # Bilder werden standardmäßig hell (besser für Dokumente)
+      - GF_RENDERING_DEFAULT_THEME=light
+      # Verhindert, dass Linien zu dünn werden
+      - GF_RENDERING_DEFAULT_WIDTH=1200
+      - GF_RENDERING_DEFAULT_HEIGHT=600
+
+    ports:
+      - '3000:3000'
+    volumes:
+      - 'grafana_storage:/var/lib/grafana'
+    networks:
+      - grafana
+volumes:
+  grafana_storage: {}
+
+networks:
+  grafana:
+    driver: bridge

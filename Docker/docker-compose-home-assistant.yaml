@@ -1,0 +1,13 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+      - /sys/bus/w1/devices:/sys/bus/w1/devices:ro
+    restart: unless-stopped
+    devices:
+      - /dev/gpiochip0:/dev/gpiochip0
+    network_mode: host

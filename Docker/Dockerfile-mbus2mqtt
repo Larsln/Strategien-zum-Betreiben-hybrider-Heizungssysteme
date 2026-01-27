@@ -1,0 +1,25 @@
+FROM debian:12-slim
+
+# Basis + Build-Tools + Python (+ venv) + libtool-Zeug
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git build-essential autoconf automake libtool libltdl-dev pkg-config \
+    python3 python3-venv python3-pip && rm -rf /var/lib/apt/lists/*
+
+# libmbus bauen (liefert u. a. mbus-serial-request-data / mbus-serial-scan)
+RUN git clone https://github.com/rscada/libmbus.git /tmp/libmbus \
+ && cd /tmp/libmbus \
+ && ./build.sh \
+ && make install \
+ && ldconfig \
+ && rm -rf /tmp/libmbus
+
+# Python-venv einrichten und Pakete dort installieren
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN pip install --no-cache-dir paho-mqtt
+
+WORKDIR /app
+COPY mbus2mqtt.py /app/mbus2mqtt.py
+
+ENV PYTHONUNBUFFERED=1
+CMD ["python", "/app/mbus2mqtt.py"]
