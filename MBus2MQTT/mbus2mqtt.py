@@ -1,3 +1,23 @@
+"""
+M-Bus to MQTT Gateway
+---------------------
+Dieses Skript liest Daten von M-Bus-Zählern über eine serielle Schnittstelle aus,
+interpretiert die XML-Antworten und veröffentlicht die extrahierten Werte 
+(Energie, Temperatur, Leistung, Volumen) als JSON-Strings via MQTT.
+
+Abhängigkeiten:
+    - mbus-serial-request-data (CLI-Tool im Pfad)
+    - paho-mqtt (Python Library)
+
+Umgebungsvariablen:
+    MBUS_SERIAL: Pfad zum seriellen Gerät (Standard: /dev/ttyAMA4)
+    MBUS_BAUD:   Baudrate für M-Bus (Standard: 2400)
+    MBUS_ADDRS:  Kommagetrennte Liste der Primäradressen (z.B. "1,2,3")
+    MQTT_HOST:   Hostname des MQTT Brokers (Standard: mosquitto)
+    INTERVAL:    Sekunden pro vollständigem Abfrage-Zyklus
+"""
+
+
 import os, time, json, subprocess, xml.etree.ElementTree as ET
 import paho.mqtt.client as mqtt
 
@@ -10,14 +30,49 @@ MQTT_USER= os.getenv("MQTT_USER", "")
 MQTT_PASS= os.getenv("MQTT_PASS", "")
 INTERVAL = int(os.getenv("INTERVAL", "30"))  # Gesamtintervall pro vollständigem Durchlauf
 
-def publish(client, topic, payload): client.publish(topic, payload, qos=0, retain=True)
+def publish(client, topic, payload):
+   """
+    Veröffentlicht eine Nachricht auf dem MQTT-Broker.
+    
+    Args:
+        client: Der paho-mqtt Client.
+        topic: Das Ziel-Topic.
+        payload: Die zu sendenden Daten (String oder JSON).
+    """
+   client.publish(topic, payload, qos=0, retain=True)
+
 
 def read_xml(addr: str) -> str:
+  """
+    Ruft M-Bus Daten für eine Adresse via 'mbus-serial-request-data' ab.
+    
+    Args:
+        addr: Die Primäradresse des M-Bus Zählers.
+        
+    Returns:
+        Die XML-Antwort des CLI-Tools als String.
+        
+    Raises:
+        subprocess.CalledProcessError: Wenn der Aufruf fehlschlägt.
+    """
   cmd = ["mbus-serial-request-data","-b",BAUD, SERIAL, str(addr)]
   return subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=10)
 
 
 def parse(xml_text: str) -> dict:
+    """
+    Extrahiert physikalische Werte aus der M-Bus XML-Antwort.
+    
+    Es werden nur Momentanwerte (StorageNumber 0/-) berücksichtigt.
+    Unterstützte Einheiten: Energie (kWh/MWh), Temperatur (°C), 
+    Leistung (kW), Volumenstrom (l/h) und Volumen (l/m³).
+    
+    Args:
+        xml_text: Die vom Zähler empfangene XML-Struktur.
+        
+    Returns:
+        Ein Dictionary mit den gemappten Werten (z.B. {'energy_kwh': 123.4}).
+    """    
     data = {}
     root = ET.fromstring(xml_text)
 
@@ -89,6 +144,10 @@ def parse(xml_text: str) -> dict:
     return data
 
 def main():
+  """
+    Hauptschleife: Initialisiert den MQTT-Client und fragt zyklisch alle
+    konfigurierten M-Bus Adressen ab.
+    """
   client = mqtt.Client()
   if MQTT_USER: client.username_pw_set(MQTT_USER, MQTT_PASS)
   client.connect(MQTT_HOST, MQTT_PORT, 60)

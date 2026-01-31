@@ -78,6 +78,10 @@ Die Repository-Struktur ist nach Diensten (Container/Subsysteme) gegliedert. Jed
   - Durchflussmesser: `DHM-DHM1400-G54-6,3-260-PULS`
   - Kommunikationsmodul: `KAM-MC-COM-MBUS-PULSIN`
 
+### Energiemessung (Elektrisch)
+- **1x Shelly 3EM**
+- **3x Klappstromwandler**
+
 
 ---
 
